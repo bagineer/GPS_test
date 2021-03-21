@@ -1,6 +1,7 @@
 package com.example.gps_test;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -12,7 +13,14 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
@@ -20,6 +28,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.material.snackbar.Snackbar;
+
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -29,10 +39,13 @@ public class MainActivity extends AppCompatActivity {
 
     private String isGPSEnabled = null;
     private int isGPSPermitted = -1;
-    final static int MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
-    private boolean shouldShowRequestPermissionRationale;
-//    private Snackbar snackbar;
+    private final static int MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
+    private final static int ACT_SETTING = 0;
+    private boolean isRepeated;
+    //    private Snackbar snackbar;
     private View mainView;
+
+    private double lat, lon;
 
 
     @Override
@@ -40,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        TextView textView = (TextView)findViewById(R.id.textView);
+        TextView textView = (TextView) findViewById(R.id.textView);
         mainView = findViewById(R.id.activity_main);
 
 //        // 권한 요청
@@ -49,20 +62,40 @@ public class MainActivity extends AppCompatActivity {
 //                new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
 //                MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
 
-        isGPSEnabled = Settings.Secure.getString(getContentResolver(),
-                Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
-        Log.d("Debug", "test, "+isGPSEnabled);
-
-        setGPSEnabled();
         getGPSPermission();
-
-//        snackbar = Snackbar.make(v, "Test", Snackbar.LENGTH_INDEFINITE);
-//        snackbar.setAction();
+//        setGPSEnabled();
 
 //        clickHandler(mainView);
-        alertCheckGPS();
+
+        MLocationListner mLocationListner = new MLocationListner();
+        LocationManager locationManager = (LocationManager)
+                this.getSystemService(Context.LOCATION_SERVICE);
+
+        List<String> providers = locationManager.getAllProviders();
+
+        String str = "";
+        for (int i=0; i<providers.size(); i++) {
+            str += "Provider "+providers.get(i) + " : "+
+                    locationManager.isProviderEnabled(providers.get(i))+"\n";
+        }
+        textView.setText(str);
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+                3000, 0, mLocationListner);
     }
 
+    /*
+    // 스낵바 팝업 생성
     public void clickHandler(View v) {
         Snackbar snackbar = Snackbar.make(v, "Snackbar Test", Snackbar.LENGTH_INDEFINITE);
 
@@ -76,6 +109,8 @@ public class MainActivity extends AppCompatActivity {
 
         snackbar.show();
     }
+
+     */
 
 
 /*
@@ -144,7 +179,8 @@ public class MainActivity extends AppCompatActivity {
 
  */
 
-    // GPS 권한 확인
+    /* GPS 권한 */
+    // 1. GPS 권한 확인
     private void getGPSPermission() {
         isGPSPermitted = ActivityCompat.checkSelfPermission(context,
                 Manifest.permission.ACCESS_FINE_LOCATION);
@@ -158,7 +194,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // 권한 요청 다이얼로그 결과에 대한 액션
+    // 2. 권한 요청 다이얼로그 결과에 대한 액션
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode) {
@@ -166,47 +202,96 @@ public class MainActivity extends AppCompatActivity {
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // Accept
-//                    Toast.makeText(context, "권한 승인", Toast.LENGTH_SHORT).show();
-                    Log.d("Debug 3", "권한 승인");
+                    Log.d("Debug", "Permission accepted");
                 } else {
                     // Deny
-                    if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                            Manifest.permission.ACCESS_FINE_LOCATION)) {
+                    Log.d(TAG, "Permission denied");
+                    isRepeated = ActivityCompat.shouldShowRequestPermissionRationale(this,
+                            Manifest.permission.ACCESS_FINE_LOCATION);
+                    if (isRepeated) {
                         // 다시 묻지 않음 체크 안함
-                        AlertDialog.Builder dlg = new AlertDialog.Builder(context);
-                        dlg.setTitle("권한 설정 필요");
-                        dlg.setMessage("사용불가");
-                        dlg.setPositiveButton("Accept", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-
-                            }
-                        });
-                        dlg.show();
+                        alertPermissionGPS(isRepeated, "권한 설정 필요", "사용불가");
                     } else {
                         // 다시 묻지 않음 체크
-                        AlertDialog.Builder dlg = new AlertDialog.Builder(context);
-                        dlg.setTitle("권한 설정 필요");
-                        dlg.setMessage("사용불가\n설정창 이동?");
-                        dlg.setPositiveButton("Accept", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-
-                            }
-                        });
-                        dlg.setNegativeButton("Deny", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-
-                            }
-                        });
-                        dlg.show();
+                        alertPermissionGPS(isRepeated, "권한 설정 필요",
+                                "사용불가\n설정창 이동?");
                     }
                 }
         }
     }
 
-    // GPS 활성 상태 확인
+    // 3. GPS 권한 거부 이벤트
+    private void alertPermissionGPS(boolean repeated, String title, String msg) {
+        AlertDialog.Builder dlg = new AlertDialog.Builder(context);
+        dlg.setTitle(title)
+                .setMessage(msg);
+        if (repeated) {
+            dlg.setPositiveButton("CANCEL",
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            dialogInterface.cancel();
+                        }
+                    })
+                    .show();
+        } else {
+            dlg.setPositiveButton("ACCEPT",
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            setGPSPermission();
+                        }
+                    })
+                    .setNegativeButton("DENY",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    dialogInterface.cancel();
+                                }
+                            })
+                    .show();
+        }
+    }
+
+//    Handler mHandler = new Handler(Looper.getMainLooper()) {
+//        @Override
+//        public void handleMessage(@NonNull Message msg) {
+//            if (msg.what == 0) {
+//                setGPSEnabled();
+//            }
+//        }
+//    };
+
+    // 4. GPS 권한 설정 화면
+    private void setGPSPermission() {
+        Intent GPSPmsIntent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+        Uri uri = Uri.fromParts("package", getPackageName(), null);
+        GPSPmsIntent.setData(uri);
+        startActivityForResult(GPSPmsIntent, ACT_SETTING);
+    }
+
+
+
+    // 5. GPS 권한 설정 종료 이벤트
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        switch (requestCode) {
+            case ACT_SETTING:
+                Log.d(TAG, "Setting activity finished");
+
+                isGPSPermitted = ActivityCompat.checkSelfPermission(context,
+                        Manifest.permission.ACCESS_FINE_LOCATION);
+
+                if (isGPSPermitted == PackageManager.PERMISSION_GRANTED) {
+                    setGPSEnabled();
+                    break;
+                }
+        }
+    }
+
+    /* GPS 활성화 */
+    // 1. GPS 활성 상태 확인
     private void setGPSEnabled() {
         isGPSEnabled = Settings.Secure.getString(getContentResolver(),
                 Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
@@ -220,7 +305,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // GPS 사용 설정 다이얼로그
+    // 2. GPS 사용 설정 다이얼로그
     private void alertCheckGPS() {
         AlertDialog.Builder dlg = new AlertDialog.Builder(context);
         dlg.setTitle("GPS 사용 설정")
@@ -241,10 +326,26 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    // GPS 설정
+    // 3. GPS 설정
     private void setGPSConfig() {
         Intent GPSOptIntent = new Intent(
                 Settings.ACTION_LOCATION_SOURCE_SETTINGS);
         startActivity(GPSOptIntent);
+    }
+
+    /* LocationProvider */
+    public class MLocationListner implements LocationListener {
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) { }
+        @Override
+        public void onProviderEnabled(@NonNull String provider) { }
+        @Override
+        public void onProviderDisabled(@NonNull String provider) { }
+        @Override
+        public void onLocationChanged(@NonNull Location location) {
+            lat = location.getLatitude();
+            lon = location.getLongitude();
+            Log.d(TAG, lat+","+lon);
+        }
     }
 }
