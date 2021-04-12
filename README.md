@@ -8,28 +8,28 @@
 >2021.03.25
 >
 ### 1. GPS 권한 설정
- > 1-0) GPS 권한 확인 메소드
+ >  0) GPS 권한 확인 메소드
 
     // 0. Check GPS Permission
     private boolean checkGPSPermission() {...}
 
- > 1-1) GPS 권한 확인    
+ >  1) GPS 권한 확인    
 
     // 1. GPS 권한 확인
     private void getGPSPermission() {...}
     
- > 1-2) 권한 요청 다이얼로그
+ >  2) 권한 요청 다이얼로그
 
     // 2. 권한 요청 다이얼로그 결과에 대한 액션
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {...}
     
- > 1-3) GPS 권한 거부
+ >  3) GPS 권한 거부
 
     // 3. GPS 권한 거부 이벤트
     private void alertPermissionGPS(boolean repeated, String msg) {...}
 
- > 1-4) 앱 종료 다이얼로그
+ >  4) 앱 종료 다이얼로그
 
     // #. 앱 종료 다이얼로그
     private void alertFinish() {...}
