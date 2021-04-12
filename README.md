@@ -7,7 +7,7 @@
 
 >2021.03.25
 >
->1. GPS 권한 설정
+>###1. GPS 권한 설정
 > > 0) GPS 권한 확인 메소드
 
     // 0. Check GPS Permission
@@ -45,7 +45,7 @@
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {...}
 
->2. GPS 활성화
+>###2. GPS 활성화
 > > 0) GPS 활성 확인 메소드
 
     // 0. GPS 활성 상태 확인
@@ -66,7 +66,7 @@
     // 3. GPS 설정
     private void setGPSConfig() {...}
 
->3. GPS 신호 수신
+>###3. GPS 신호 수신
 > > 1) 최적 제공자 설정
 
     // Get Best Provider
