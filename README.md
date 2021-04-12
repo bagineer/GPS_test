@@ -8,7 +8,7 @@
 >2021.03.25
 >
 ### 1. GPS 권한 설정
- > 0) GPS 권한 확인 메소드
+ > 1-0. GPS 권한 확인 메소드
 
     // 0. Check GPS Permission
     private boolean checkGPSPermission() {...}
